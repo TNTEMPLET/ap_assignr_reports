@@ -115,28 +115,109 @@ async function fetchDataWithBearerToken() {
     }
 }
 
+// Function to get the start date of the week for a given date
+function getWeekStartDate(dateString) {
+    const date = new Date(dateString);
+    const dayOfWeek = date.getDay();
+    const startDate = new Date(date);
+    startDate.setDate(startDate.getDate() - dayOfWeek); // Move to the start of the week (Sunday)
+    return startDate.toISOString().slice(0, 10); // Return the date in YYYY-MM-DD format
+}
+
+// Function to get the end date of the week for a given date
+function getWeekEndDate(startDate) {
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6); // Move to the end of the week (Saturday)
+    return endDate.toISOString().slice(0, 10); // Return the date in YYYY-MM-DD format
+}
+// Function to group data by Venue and Date
+function groupDataByVenueAndDate(data) {
+    const groupedData = {};
+
+    data.forEach(item => {
+        const key = `${item.venue}_${item.start_time}`;
+        if (!groupedData[key]) {
+            groupedData[key] = [];
+        }
+        groupedData[key].push(item);
+    });
+
+    return Object.values(groupedData);
+}
+
+// Function to calculate fee totals by day
+function calculateFeeTotalByDay(groupedData) {
+    return groupedData.map(group => {
+        const feeTotal = group.reduce((total, item) => total + item.fee, 0);
+        return { ...group[0], feeTotal };
+    });
+}
+
+// Function to calculate fee totals by week
+function calculateFeeTotalByWeek(groupedData) {
+    const feeTotalByWeek = {};
+
+    groupedData.forEach(group => {
+        const weekStartDate = getWeekStartDate(group[0].start_time); // Implement getWeekStartDate function
+        if (!feeTotalByWeek[weekStartDate]) {
+            feeTotalByWeek[weekStartDate] = 0;
+        }
+        feeTotalByWeek[weekStartDate] += group.reduce((total, item) => total + item.fee, 0);
+    });
+
+    return Object.entries(feeTotalByWeek).map(([startDate, feeTotal]) => ({
+        startDate,
+        endDate: getWeekEndDate(startDate), // Implement getWeekEndDate function
+        feeTotal
+    }));
+}
+
+
 function createTable(data) {
     if (!data || data.length === 0) {
         console.error('Data is empty or undefined.');
         return;
     }
-    
-    // Create the table element
-    const table = document.createElement('table');
+
+    // Group data by Venue
+    const groupedByVenue = groupDataByVenue(data);
+
+    // Create tables for each Venue
+    groupedByVenue.forEach(venueGroup => {
+        const venueTable = createVenueTable(venueGroup);
+        document.getElementById('table-container').appendChild(venueTable);
+    });
+}
+
+// Function to group data by Venue
+function groupDataByVenue(data) {
+    const groupedData = {};
+    data.forEach(item => {
+        if (!groupedData[item.venue]) {
+            groupedData[item.venue] = [];
+        }
+        groupedData[item.venue].push(item);
+    });
+    return Object.values(groupedData);
+}
+
+// Function to create a table for each Venue
+function createVenueTable(venueGroup) {
+    const venueTable = document.createElement('table');
 
     // Create table header row
-    const headerRow = table.insertRow();
-    for (const key in data[0]) {
-        if (data[0].hasOwnProperty(key)) {
+    const headerRow = venueTable.insertRow();
+    for (const key in venueGroup[0]) {
+        if (venueGroup[0].hasOwnProperty(key)) {
             const th = document.createElement('th');
             th.textContent = key;
             headerRow.appendChild(th);
         }
     }
 
-    // Create table rows
-    data.forEach(item => {
-        const row = table.insertRow();
+    // Create table rows for each Date
+    venueGroup.forEach(item => {
+        const row = venueTable.insertRow();
         for (const key in item) {
             if (item.hasOwnProperty(key)) {
                 const cell = row.insertCell();
@@ -145,10 +226,7 @@ function createTable(data) {
         }
     });
 
-    // Append the table to a container element
-    const container = document.getElementById('table-container');
-    container.innerHTML = '';
-    container.appendChild(table);
+    return venueTable;
 }
 
 fetchDataWithBearerToken()
