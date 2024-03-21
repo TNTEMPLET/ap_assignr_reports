@@ -130,7 +130,7 @@ function getWeekEndDate(startDate) {
     endDate.setDate(endDate.getDate() + 6); // Move to the end of the week (Saturday)
     return endDate.toISOString().slice(0, 10); // Return the date in YYYY-MM-DD format
 }
-// Function to group data by Venue and Date
+// // Function to group data by Venue and Date
 function groupDataByVenueAndDate(data) {
     const groupedData = {};
 
@@ -143,6 +143,39 @@ function groupDataByVenueAndDate(data) {
     });
 
     return Object.values(groupedData);
+}
+
+function createVenueTable(venueGroup) {
+    const venueTable = document.createElement('table');
+
+    // Create table header row
+    const headerRow = venueTable.insertRow();
+    const th = document.createElement('th');
+    const columnNames = ['Time', 'Park', 'Field', 'Position', 'First Name', 'Last Name', 'Division', 'Fee']
+    for (column in columnNames){
+        th.textContent = column;
+        headerRow.appendChild(th);
+    }    
+
+    // Create table rows for each Date
+    venueGroup.forEach(item => {
+        const row = venueTable.insertRow();
+        for (const key in item) {
+            if (item.hasOwnProperty(key)) {
+                const cell = row.insertCell();
+                cell.textContent = item[key];
+            }
+        }
+    });
+
+    // Calculate and add a row for the total fee
+    const totalRow = venueTable.insertRow();
+    const totalCell = totalRow.insertCell();
+    totalCell.colSpan = Object.keys(venueGroup[0]).length; // Span the cell across all columns
+    const totalFee = venueGroup.reduce((total, item) => total + item.fee, 0);
+    totalCell.textContent = `Total Fee: $${totalFee}`;
+
+    return venueTable;
 }
 
 // Function to calculate fee totals by day
@@ -172,6 +205,18 @@ function calculateFeeTotalByWeek(groupedData) {
     }));
 }
 
+// Function to group data by Venue
+function groupDataByVenue(data) {
+    const groupedData = {};
+    data.forEach(item => {
+        if (!groupedData[item.venue]) {
+            groupedData[item.venue] = [];
+        }
+        groupedData[item.venue].push(item);
+    });
+    return Object.values(groupedData);
+}
+
 
 function createTable(data) {
     if (!data || data.length === 0) {
@@ -189,45 +234,7 @@ function createTable(data) {
     });
 }
 
-// Function to group data by Venue
-function groupDataByVenue(data) {
-    const groupedData = {};
-    data.forEach(item => {
-        if (!groupedData[item.venue]) {
-            groupedData[item.venue] = [];
-        }
-        groupedData[item.venue].push(item);
-    });
-    return Object.values(groupedData);
-}
 
-// Function to create a table for each Venue
-function createVenueTable(venueGroup) {
-    const venueTable = document.createElement('table');
-
-    // Create table header row
-    const headerRow = venueTable.insertRow();
-    for (const key in venueGroup[0]) {
-        if (venueGroup[0].hasOwnProperty(key)) {
-            const th = document.createElement('th');
-            th.textContent = key;
-            headerRow.appendChild(th);
-        }
-    }
-
-    // Create table rows for each Date
-    venueGroup.forEach(item => {
-        const row = venueTable.insertRow();
-        for (const key in item) {
-            if (item.hasOwnProperty(key)) {
-                const cell = row.insertCell();
-                cell.textContent = item[key];
-            }
-        }
-    });
-
-    return venueTable;
-}
 
 fetchDataWithBearerToken()
     .then(data => {
